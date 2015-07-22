@@ -1,0 +1,6 @@
+*.sdf
+*.suo
+*.opensdf
+*.bak
+bin/
+lib/

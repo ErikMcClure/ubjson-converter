@@ -23,6 +23,7 @@ void convert(std::istream& s)
   ParseJSON<ConvJSON>(obj, s);
 }
 
+// Converts JSON into a direct, unoptimized UBJSON format
 void convdir_value(std::istream& in, std::ostream& out);
 
 void convdir_id(std::istream& in, std::ostream& out)
@@ -122,6 +123,79 @@ void convdir_value(std::istream& in, std::ostream& out)
     else WriteUBJSONString(buf, buf.length(), out, 0);
     break;
   }
+}
+
+// Convert UBJSON to JSON
+void revert_obj(std::istream& in, std::ostream& out);
+
+struct ConvUBJSON
+{
+  void EvalUBJSON(const char* id, std::istream& s, char type)
+  {
+    revert_value(id, s, type);
+  }
+  void revert_value(const char* id, std::istream& in, char type)
+  {
+    UBJSONTuple tuple;
+    WriteJSONComma(out, pretty);
+    if(!id && WriteJSONIsPretty(pretty)) out << std::endl;
+    WriteJSONId(id, out, pretty);
+
+    ParseUBJSONValue(tuple, in, type);
+    std::string s;
+    switch(tuple.type)
+    {
+    case UBJSONTuple::TYPE_NULL: s = "null"; break;
+    case UBJSONTuple::TYPE_TRUE: s = "true"; break;
+    case UBJSONTuple::TYPE_FALSE: s = "false"; break;
+    case UBJSONTuple::TYPE_CHAR: s = tuple.Int8;
+    case UBJSONTuple::TYPE_INT8: s = std::to_string((int)tuple.Int8); break;
+    case UBJSONTuple::TYPE_UINT8: s = std::to_string(tuple.UInt8); break;
+    case UBJSONTuple::TYPE_INT16: s = std::to_string(tuple.Int16); break;
+    case UBJSONTuple::TYPE_INT32: s = std::to_string(tuple.Int32); break;
+    case UBJSONTuple::TYPE_INT64: s = std::to_string(tuple.Int64); break;
+    case UBJSONTuple::TYPE_FLOAT: s = std::to_string(tuple.Float); break;
+    case UBJSONTuple::TYPE_DOUBLE: s = std::to_string(tuple.Double); break;
+    case UBJSONTuple::TYPE_BIGNUM:
+    case UBJSONTuple::TYPE_STRING:
+      s = tuple.String;
+      break;
+    case UBJSONTuple::TYPE_OBJECT:
+      revert_obj(in, out, UBJSONTuple::TYPE_OBJECT, pretty);
+      return;
+    case UBJSONTuple::TYPE_ARRAY:
+    {
+      unsigned int npretty = WriteJSONPretty(pretty);
+      ConvUBJSON obj = { out, npretty };
+      out << '[';
+      ParseUBJSONInternal<ConvUBJSON, false>::F(obj, in, UBJSONTuple::TYPE_ARRAY);
+      out << ']';
+    }
+      return;
+    }
+    out << s;
+  }
+
+  std::ostream& out;
+  unsigned int& pretty;
+};
+
+template<>
+struct ParseUBJSONInternal<ConvUBJSON, false>
+{
+  static inline bool DoBulkRead(ConvUBJSON& obj, std::istream& s, __int64 count, char ty) { return false; }
+  static inline void DoAddCall(ConvUBJSON& obj, std::istream& s, int& n, char ty) { obj.revert_value(s, ty); }
+  static void F(ConvUBJSON& obj, std::istream& s, char ty) { ParseUBJSONArray<ConvUBJSON>(obj, s, ty); }
+};
+
+// Converts UBJSON into JSON
+void revert_obj(std::istream& in, std::ostream& out, char type, unsigned int& pretty)
+{
+  unsigned int npretty = WriteJSONPretty(pretty);
+  ConvUBJSON obj = { out, npretty };
+  out << '{';
+  ParseUBJSON<ConvUBJSON>(obj, in, type);
+  out << '}';
 }
 
 int main(int argc, char** argv)

@@ -2,5 +2,8 @@
 *.suo
 *.opensdf
 *.bak
+*.user
 bin/
+!bin/out.ubj
+!bin/pretty.json
 lib/

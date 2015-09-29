@@ -2,8 +2,8 @@
 *.suo
 *.opensdf
 *.bak
-*.user
-bin/
-!bin/out.ubj
-!bin/pretty.json
+ubjson-converter.vcxproj.*
+bin/Debug
+bin/Release
+bin/ubjson-converter*
 lib/

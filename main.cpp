@@ -51,7 +51,24 @@ void convert(const JSONValue& from, UBJSONValue& to)
 {
   switch(from.tag())
   {
-  case JSONValue::Type<cStr>::value: to = from.get<cStr>(); break;
+  case JSONValue::Type<cStr>::value:
+    if(from.get<cStr>().length() > 6 && !strncmp(from.get<cStr>(), "$file:", 6))
+    {
+      std::fstream fs(from.get<cStr>().substr(6), std::ios::in | std::ios::binary);
+      if(fs)
+      {
+        to = UBJSONValue::UBJSONBinary();
+        auto& v = to.get<UBJSONValue::UBJSONBinary>();
+        fs.seekg(0, std::ios_base::end);
+        v.SetLength(fs.tellg());
+        fs.seekg(0);
+        fs.read((char*)(unsigned char*)v, v.Length());
+        fs.close();
+        break;
+      }
+    }
+    to = from.get<cStr>();
+    break;
   case JSONValue::Type<bool>::value: to = from.get<bool>(); break;
   case JSONValue::Type<__int64>::value: to = from.get<__int64>(); break;
   case JSONValue::Type<double>::value: to = from.get<double>(); break;

@@ -1,0 +1,64 @@
+
+{
+	"a": -5,
+	"b": 342,
+	"c": 23.7193,
+	"test": "$file:ubjson-converter.exe",
+	"nested": {
+		"value": [
+			{
+				"value": []
+			},
+			{
+				"value": []
+			}]
+	},
+	"foo": [5,6,4,2,2,3],
+	"bar": [3.3,1.6543,0.49873,90,4],
+	"foobar": ["moar",""],
+	"nestarray": [
+		{
+			"a": 0,
+			"b": 0,
+			"c": 0,
+			"test": "",
+			"nested": {
+				"value": []
+			},
+			"foo": [],
+			"bar": [],
+			"foobar": [],
+			"nestarray": [],
+			"nested2": {
+				"value": []
+			},
+			"btrue": false,
+			"bfalse": false,
+			"fixed": [0,0,0]
+		},
+		{
+			"a": 0,
+			"b": 34,
+			"c": 0,
+			"test": "",
+			"nested": {
+				"value": []
+			},
+			"foo": [],
+			"bar": [],
+			"foobar": [],
+			"nestarray": [],
+			"nested2": {
+				"value": []
+			},
+			"btrue": false,
+			"bfalse": false,
+			"fixed": [0,0,0]
+		}],
+	"nested2": {
+		"value": []
+	},
+	"btrue": true,
+	"bfalse": false,
+	"fixed": [0.2,23.1,-3]
+}

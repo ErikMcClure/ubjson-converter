@@ -2,8 +2,10 @@
 *.suo
 *.opensdf
 *.bak
+*.aps
 ubjson-converter.vcxproj.*
 bin/Debug
 bin/Release
+bin/x64
 bin/ubjson-converter*
 lib/

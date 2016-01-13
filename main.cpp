@@ -14,11 +14,11 @@ void convert(const UBJSONValue& from, JSONValue& to)
   {
   case UBJSONValue::Type<cStr>::value: to = from.get<cStr>(); break;
   case UBJSONValue::Type<bool>::value: to = from.get<bool>(); break;
-  case UBJSONValue::Type<unsigned __int8>::value: to = static_cast<__int64>(from.get<unsigned __int8>()); break;
-  case UBJSONValue::Type<__int8>::value: to = static_cast<__int64>(from.get<__int8>()); break;
-  case UBJSONValue::Type<__int16>::value: to = static_cast<__int64>(from.get<__int16>()); break;
-  case UBJSONValue::Type<__int32>::value: to = static_cast<__int64>(from.get<__int32>()); break;
-  case UBJSONValue::Type<__int64>::value: to = static_cast<__int64>(from.get<__int64>()); break;
+  case UBJSONValue::Type<uint8_t>::value: to = static_cast<int64_t>(from.get<uint8_t>()); break;
+  case UBJSONValue::Type<char>::value: to = static_cast<int64_t>(from.get<char>()); break;
+  case UBJSONValue::Type<int16_t>::value: to = static_cast<int64_t>(from.get<int16_t>()); break;
+  case UBJSONValue::Type<int32_t>::value: to = static_cast<int64_t>(from.get<int32_t>()); break;
+  case UBJSONValue::Type<int64_t>::value: to = static_cast<int64_t>(from.get<int64_t>()); break;
   case UBJSONValue::Type<float>::value: to = static_cast<double>(from.get<float>()); break;
   case UBJSONValue::Type<double>::value: to = from.get<double>(); break;
   case UBJSONValue::Type<UBJSONValue::UBJSONArray>::value:
@@ -70,7 +70,7 @@ void convert(const JSONValue& from, UBJSONValue& to)
     to = from.get<cStr>();
     break;
   case JSONValue::Type<bool>::value: to = from.get<bool>(); break;
-  case JSONValue::Type<__int64>::value: to = from.get<__int64>(); break;
+  case JSONValue::Type<int64_t>::value: to = from.get<int64_t>(); break;
   case JSONValue::Type<double>::value: to = from.get<double>(); break;
   case JSONValue::Type<JSONValue::JSONArray>::value:
   {

@@ -16,21 +16,21 @@ namespace bss_util {
   class BSS_COMPILER_DLLEXPORT variant
   {
     // Compile-time max sizeof
-    template<typename Arg, typename... Args>
-    struct max_sizeof { static constexpr size_t value = (max_sizeof<Args...>::value > sizeof(Arg)) ? max_sizeof<Args...>::value : sizeof(Arg); };
+    template<typename A, typename... Ax>
+    struct max_sizeof { static constexpr size_t value = (max_sizeof<Ax...>::value > sizeof(A)) ? max_sizeof<Ax...>::value : sizeof(A); };
 
-    template<typename Arg>
-    struct max_sizeof<Arg> { static constexpr size_t value = sizeof(Arg); };
+    template<typename A>
+    struct max_sizeof<A> { static constexpr size_t value = sizeof(A); };
 
     // Compile-time max alignment
-    template<typename Arg, typename... Args>
+    template<typename A, typename... Ax>
     struct max_alignof {
-      static constexpr size_t value = (max_alignof<Args...>::value > alignof(Arg)) ? max_alignof<Args...>::value : alignof(Arg);
-      typedef std::conditional<(max_alignof<Args...>::value > alignof(Arg)), Arg, typename max_alignof<Args...>::type> type;
+      static constexpr size_t value = (max_alignof<Ax...>::value > alignof(A)) ? max_alignof<Ax...>::value : alignof(A);
+      typedef std::conditional<(max_alignof<Ax...>::value > alignof(A)), A, typename max_alignof<Ax...>::type> type;
     };
 
-    template<typename Arg>
-    struct max_alignof<Arg> { static constexpr size_t value = alignof(Arg); typedef Arg type; };
+    template<typename A>
+    struct max_alignof<A> { static constexpr size_t value = alignof(A); typedef A type; };
 
     template<typename X, typename... Ts> struct getpos;
 
@@ -62,7 +62,7 @@ namespace bss_util {
         if(tag == getpos<T, Arg, Args...>::value)
           new(store) T(*reinterpret_cast<const T*>(v._store));
         else
-          op<Tx...>::construct<typename std::remove_reference<U>::type>(tag, store, v);
+          op<Tx...>::template construct<typename std::remove_reference<U>::type>(tag, store, v);
       }
       template<class U>
       inline static void construct(int tag, char* store, typename std::remove_reference<U>::type&& v)
@@ -71,7 +71,7 @@ namespace bss_util {
         if(tag == getpos<T, Arg, Args...>::value)
           new(store) T((T&&)(*reinterpret_cast<T*>(v._store)));
         else
-          op<Tx...>::construct<U>(tag, store, std::move(v));
+          op<Tx...>::template construct<U>(tag, store, std::move(v));
       }
       template<class U>
       inline static void assign(int tag, char* store, const typename std::remove_reference<U>::type& v)
@@ -79,7 +79,7 @@ namespace bss_util {
         if(tag == getpos<T, Arg, Args...>::value)
           *reinterpret_cast<T*>(store) = *reinterpret_cast<const T*>(v._store);
         else
-          op<Tx...>::assign<typename std::remove_reference<U>::type>(tag, store, v);
+          op<Tx...>::template assign<typename std::remove_reference<U>::type>(tag, store, v);
       }
       template<class U>
       inline static void assign(int tag, char* store, typename std::remove_reference<U>::type&& v)
@@ -87,7 +87,7 @@ namespace bss_util {
         if(tag == getpos<T, Arg, Args...>::value)
             *reinterpret_cast<T*>(store) = (T&&)(*reinterpret_cast<const T*>(v._store));
         else
-          op<Tx...>::assign<U>(tag, store, std::move(v));
+          op<Tx...>::template assign<U>(tag, store, std::move(v));
       }
       template<class U>
       inline static U convert(int tag, char* store)
@@ -95,7 +95,7 @@ namespace bss_util {
         if(tag == getpos<T, Arg, Args...>::value)
           return static_cast<U>(*reinterpret_cast<T*>(store));
         else
-          return op<Tx...>::convert<U>(tag, store);
+          return op<Tx...>::template convert<U>(tag, store);
       }
       template<class U>
       inline static U* convertP(int tag, char* store)
@@ -103,7 +103,7 @@ namespace bss_util {
         if(tag == getpos<T, Arg, Args...>::value)
           return static_cast<U*>(reinterpret_cast<T*>(store));
         else
-          return op<Tx...>::convertP<U>(tag, store);
+          return op<Tx...>::template convertP<U>(tag, store);
       }
     };
 
@@ -150,23 +150,23 @@ namespace bss_util {
     template<typename U>
     struct resolve<variant, U>
     {
-      inline static void construct(variant& src, U && v) { src._tag = v._tag; op<Arg, Args...>::construct<U>(src._tag, src._store, std::forward<U>(v)); }
+      inline static void construct(variant& src, U && v) { src._tag = v._tag; op<Arg, Args...>::template construct<U>(src._tag, src._store, std::forward<U>(v)); }
       inline static void assign(variant& src, U && v) { 
         if(src._tag == v._tag)
-          op<Arg, Args...>::assign<U>(src._tag, src._store, std::forward<U>(v));
+          op<Arg, Args...>::template assign<U>(src._tag, src._store, std::forward<U>(v));
         else
         {
           src._destruct();
           src._tag = v._tag;
-          op<Arg, Args...>::construct<U>(src._tag, src._store, std::forward<U>(v));
+          op<Arg, Args...>::template construct<U>(src._tag, src._store, std::forward<U>(v));
         }
       }
     };
 
   public:
     variant() : _tag(-1) {}
-    variant(const variant& v) : _tag(v._tag) { op<Arg, Args...>::construct<variant>(_tag, _store, v); }
-    variant(variant&& v) : _tag(v._tag) { op<Arg, Args...>::construct<variant>(_tag, _store, std::move(v)); }
+    variant(const variant& v) : _tag(v._tag) { op<Arg, Args...>::template construct<variant>(_tag, _store, v); }
+    variant(variant&& v) : _tag(v._tag) { op<Arg, Args...>::template construct<variant>(_tag, _store, std::move(v)); }
     template<typename T>
     explicit variant(const T& t) { _construct(t); }
     template<typename T>
@@ -194,11 +194,11 @@ namespace bss_util {
       return *reinterpret_cast<const T*>(_store);
     }
     template<typename T>
-    const T convert() const { return op<Arg, Args...>::convert<T>(_tag, _store); }
+    const T convert() const { return op<Arg, Args...>::template convert<T>(_tag, _store); }
     template<typename T>
-    T convert() { return op<Arg, Args...>::convert<T>(_tag, _store); }
+    T convert() { return op<Arg, Args...>::template convert<T>(_tag, _store); }
     template<typename T>
-    T* convertP() { return op<Arg, Args...>::convertP<T>(_tag, _store); }
+    T* convertP() { return op<Arg, Args...>::template convertP<T>(_tag, _store); }
     template<typename T>
     inline static bool contains() { return getpos<T, Arg, Args...>::value != -1; }
     template<typename T>

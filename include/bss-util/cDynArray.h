@@ -24,9 +24,9 @@ namespace bss_util {
   public:
     inline cDynArray(const cDynArray& copy) : AT_(copy._capacity), _length(copy._length) { BASE::_copy(_array, copy._array, _length); }
     inline cDynArray(cDynArray&& mov) : AT_(std::move(mov)), _length(mov._length) { mov._length = 0; }
-    inline cDynArray(const cArraySlice<const T, CType>& slice) : AT_(slice.length), _length(slice.length) { BASE::_copy(_array, slice.begin, slice.length); }
+    inline cDynArray(const cArraySlice<const T, CType>& slice) : AT_(slice.length), _length(slice.length) { BASE::_copy(_array, slice.start, slice.length); }
     inline explicit cDynArray(CT_ capacity=0) : AT_(capacity), _length(0) {}
-    inline cDynArray(const std::initializer_list<T> list) : AT_(list.size()), _length(0)
+    inline cDynArray(const std::initializer_list<T>& list) : AT_(list.size()), _length(0)
     {
       auto end = list.end();
       for(auto i = list.begin(); i != end && _length < _capacity; ++i)
@@ -37,38 +37,50 @@ namespace bss_util {
     BSS_FORCEINLINE CT_ Add(T_&& t) { _checksize(); new(_array + _length) T(std::move(t)); return _length++; }
 #ifdef BSS_VARIADIC_TEMPLATES
     template<typename... Args>
-    BSS_FORCEINLINE CT_ AddConstruct(Args... args) { _checksize(); new(_array + _length) T(args...); return _length++; }
+    BSS_FORCEINLINE CT_ AddConstruct(Args&&... args) { _checksize(); new(_array + _length) T(std::forward<Args>(args)...); return _length++; }
 #endif
     inline void Remove(CT_ index)
     {
       assert(index < _length);
-      BASE::_move(_array, index, index + 1, _length - index - 1);
-      _array[--_length].~T();
+      BASE::_remove(_array, _length--, index);
     }
     BSS_FORCEINLINE void RemoveLast() { Remove(_length - 1); }
     BSS_FORCEINLINE void Insert(const T_& t, CT_ index=0) { _insert(t, index); }
     BSS_FORCEINLINE void Insert(T_&& t, CT_ index=0) { _insert(std::move(t), index); }
+    BSS_FORCEINLINE void Set(const cArraySlice<const T, CType>& slice) { Set(slice.start, slice.length); }
+    BSS_FORCEINLINE void Set(const T* p, CType n)
+    {
+      BASE::_setlength(_array, _length, 0);
+      if(n > _capacity)
+        AT_::SetCapacityDiscard(n);
+      BASE::_copy(_array, p, n);
+      _length = n;
+    }
     BSS_FORCEINLINE bool Empty() const { return !_length; }
     BSS_FORCEINLINE void Clear() { SetLength(0); }
     inline void SetLength(CT_ length)
     { 
       if(length < _length) BASE::_setlength(_array, _length, length);
-      if(length > _capacity) BASE::_setcapacity(*this, length);
+      if(length > _capacity) BASE::_setcapacity(*this, _length, length);
       if(length > _length) BASE::_setlength(_array, _length, length);
       _length = length;
     }
-    inline void Reserve(CT_ capacity) { if(capacity>_capacity) BASE::_setcapacity(*this, capacity); }
+    inline void Reserve(CT_ capacity) { if(capacity>_capacity) BASE::_setcapacity(*this, _length, capacity); }
     BSS_FORCEINLINE CT_ Length() const { return _length; }
     BSS_FORCEINLINE CT_ Capacity() const { return _capacity; }
     BSS_FORCEINLINE const T_& Front() const { assert(_length>0); return _array[0]; }
     BSS_FORCEINLINE const T_& Back() const { assert(_length>0); return _array[_length-1]; }
     BSS_FORCEINLINE T_& Front() { assert(_length>0); return _array[0]; }
     BSS_FORCEINLINE T_& Back() { assert(_length>0); return _array[_length-1]; }
-    BSS_FORCEINLINE const T_* begin() const { return _array; }
-    BSS_FORCEINLINE const T_* end() const { return _array+_length; }
-    BSS_FORCEINLINE T_* begin() { return _array; }
-    BSS_FORCEINLINE T_* end() { return _array+_length; }
-
+    BSS_FORCEINLINE const T_* begin() const noexcept { return _array; }
+    BSS_FORCEINLINE const T_* end() const noexcept { return _array+_length; }
+    BSS_FORCEINLINE T_* begin() noexcept { return _array; }
+    BSS_FORCEINLINE T_* end() noexcept { return _array+_length; }
+    BSS_FORCEINLINE cArraySlice<T_, CT_> GetSlice() const noexcept { return AT_::GetSlice(); }
+#if defined(BSS_64BIT) && defined(BSS_DEBUG) 
+    BSS_FORCEINLINE T_& operator [](uint64_t i) { assert(i < _length); return _array[i]; } // for some insane reason, this works on 64-bit, but not on 32-bit
+    BSS_FORCEINLINE const T_& operator [](uint64_t i) const { assert(i < _length); return _array[i]; }
+#endif
     BSS_FORCEINLINE operator T_*() { return _array; }
     BSS_FORCEINLINE operator const T_*() const { return _array; }
     inline cDynArray& operator=(const cArray<T, CType, ArrayType, Alloc>& copy)
@@ -91,18 +103,10 @@ namespace bss_util {
       return *this;
     }
     inline cDynArray& operator=(cDynArray&& mov) { BASE::_setlength(_array, _length, 0); AT_::operator=(std::move(mov)); _length = mov._length; mov._length = 0; return *this; }
-    inline cDynArray& operator=(const cArraySlice<const T, CType>& copy)
-    {
-      BASE::_setlength(_array, _length, 0);
-      if(copy.length > _capacity)
-        AT_::SetCapacityDiscard(copy.length);
-      BASE::_copy(_array, copy.begin, copy.length);
-      _length = copy.length;
-      return *this;
-    }
+    inline cDynArray& operator=(const cArraySlice<const T, CType>& copy) { Set(copy); return *this; }
       inline cDynArray& operator +=(const cDynArray& add)
     { 
-      BASE::_setcapacity(*this, _length + add._length);
+      BASE::_setcapacity(*this, _length, _length + add._length);
       BASE::_copy(_array + _length, add._array, add._length);
       _length+=add._length;
       return *this;
@@ -121,20 +125,12 @@ namespace bss_util {
     inline void _insert(U && data, CType index)
     {
       _checksize();
-      if(index < _length)
-      {
-        new(_array + _length) T(std::forward<U>(_array[_length - 1]));
-        BASE::_move(_array, index + 1, index, _length - index - 1);
-        _array[index] = std::forward<U>(data);
-      }
-      else
-        new(_array + index) T(std::forward<U>(data));
-      ++_length;
+      BASE::_insert(_array, _length++, index, std::forward<U>(data));
     }
     BSS_FORCEINLINE void _checksize()
     {
       if(_length >= _capacity)
-        BASE::_setcapacity(*this, T_FBNEXT(_capacity));
+        BASE::_setcapacity(*this, _length, T_FBNEXT(_capacity));
       assert(_length<_capacity);
     }
 
@@ -142,10 +138,10 @@ namespace bss_util {
   };
 
   template<typename CType, ARRAY_TYPE ArrayType, typename Alloc>
-  class BSS_COMPILER_DLLEXPORT cDynArray<bool, CType, ArrayType, Alloc> : protected cArrayBase<unsigned char, CType, typename Alloc::template rebind<unsigned char>::other>
+  class BSS_COMPILER_DLLEXPORT cDynArray<bool, CType, ArrayType, Alloc> : protected cArrayBase<uint8_t, CType, typename Alloc::template rebind<uint8_t>::other>
   {
   protected:
-    typedef unsigned char STORE;
+    typedef uint8_t STORE;
     typedef cArrayBase<STORE, CType, typename Alloc::template rebind<STORE>::other> AT_;
     typedef typename AT_::CT_ CT_;
     typedef typename AT_::T_ T_;
@@ -159,7 +155,7 @@ namespace bss_util {
     inline cDynArray(const cDynArray& copy) : AT_(copy._capacity), _length(copy._length) { memcpy(_array, copy._array, copy._capacity*sizeof(STORE)); }
     inline cDynArray(cDynArray&& mov) : AT_(std::move(mov)), _length(mov._length) { mov._length = 0; }
     inline explicit cDynArray(CT_ capacity = 0) : AT_(_maxchunks(capacity)/DIV_AMT), _length(0) {}
-    inline cDynArray(const std::initializer_list<bool> list) : AT_(_maxchunks(list.size())/DIV_AMT), _length(0)
+    inline cDynArray(const std::initializer_list<bool>& list) : AT_(_maxchunks(list.size())/DIV_AMT), _length(0)
     {
       auto end = list.end();
       for(auto i = list.begin(); i != end && _length < (_capacity*DIV_AMT); ++i)
@@ -340,11 +336,11 @@ namespace bss_util {
   };
 
   // A dynamic array that can dynamically adjust the size of each element
-  template<typename CT_, typename Alloc=StaticAllocPolicy<unsigned char>>
-  class BSS_COMPILER_DLLEXPORT cArbitraryArray : protected cArrayBase<unsigned char, CT_, Alloc>
+  template<typename CT_, typename Alloc=StaticAllocPolicy<uint8_t>>
+  class BSS_COMPILER_DLLEXPORT cArbitraryArray : protected cArrayBase<uint8_t, CT_, Alloc>
   {
   protected:
-    typedef cArrayBase<unsigned char, CT_, Alloc> AT_;
+    typedef cArrayBase<uint8_t, CT_, Alloc> AT_;
     using AT_::_array;
     using AT_::_capacity;
 
@@ -369,7 +365,7 @@ namespace bss_util {
     inline void RemoveLast() { --_length; }
     inline void SetElement(const void* newarray, CT_ element, CT_ num) // num is a count of how many elements are in the array
     {
-      if(((unsigned char*)newarray)==_array) return;
+      if(((uint8_t*)newarray)==_array) return;
       _element=element;
       _length=num;
       if((_length*_element)>_capacity) AT_::SetCapacityDiscard(_length*_element);
@@ -378,13 +374,13 @@ namespace bss_util {
     }
     template<typename T> // num is a count of how many elements are in the array
     BSS_FORCEINLINE void SetElement(const T* newarray, CT_ num) { SetElement(newarray, sizeof(T), num); }
-    template<typename T, unsigned int NUM>
+    template<typename T, uint32_t NUM>
     BSS_FORCEINLINE void SetElement(const T(&newarray)[NUM]) { SetElement(newarray, sizeof(T), NUM); }
     void SetElement(CT_ element)
     {
       if(element==_element) return;
       _capacity=element*_length;
-      unsigned char* narray = !_length?0:(unsigned char*)Alloc::allocate(_capacity);
+      uint8_t* narray = !_length?0:(uint8_t*)Alloc::allocate(_capacity);
       memset(narray, 0, _capacity);
       CT_ m=bssmin(element, _element);
       for(CT_ i = 0; i < _length; ++i)

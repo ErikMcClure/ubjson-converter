@@ -3,6 +3,8 @@
 *.opensdf
 *.bak
 *.aps
+*.VC.db
+*.opendb
 ubjson-converter.vcxproj.*
 bin/Debug
 bin/Release

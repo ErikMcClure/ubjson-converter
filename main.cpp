@@ -158,11 +158,11 @@ int main(int argc, char** argv)
   if(isubj)
   {
     UBJSONValue file;
-    ParseUBJSON<UBJSONValue>(file, fs, 0);
+    ParseUBJSON<UBJSONValue>(file, fs);
     fs.close();
     JSONValue out;
     convert(file, out);
-    WriteJSON<JSONValue>(out, fout, 1);
+    WriteJSON<JSONValue>(out, fout);
   }
   else
   {
@@ -171,7 +171,7 @@ int main(int argc, char** argv)
     fs.close();
     UBJSONValue out;
     convert(file, out);
-    WriteUBJSON<UBJSONValue>(out, fout, 0);
+    WriteUBJSON<UBJSONValue>(out, fout);
   }
 
   fout.close();

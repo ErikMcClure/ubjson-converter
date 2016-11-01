@@ -580,15 +580,19 @@ namespace bss_util {
       s.put(UBJSONTuple::TYPE_TYPE);
       s.put(type);
     }
-    s.put(UBJSONTuple::TYPE_COUNT);
-    WriteUBJSON<size_t>(size, s);
-    if(data != 0 && (type == UBJSONTuple::TYPE_CHAR || type == UBJSONTuple::TYPE_UINT8 || type == UBJSONTuple::TYPE_INT8))
-      s.write(data, size*sizeof(E)); //sizeof(E) should be 1 here but we multiply it anyway
-    else
-    {
-      for(unsigned int i = 0; i < size; ++i)
-        WriteUBJSON<E>(obj[i], s, type);
-    }
+	if (size) {
+		s.put(UBJSONTuple::TYPE_COUNT);
+		WriteUBJSON<size_t>(size, s);
+		if (data != 0 && (type == UBJSONTuple::TYPE_CHAR || type == UBJSONTuple::TYPE_UINT8 || type == UBJSONTuple::TYPE_INT8))
+			s.write(data, size * sizeof(E)); //sizeof(E) should be 1 here but we multiply it anyway
+		else
+		{
+			for (unsigned int i = 0; i < size; ++i)
+				WriteUBJSON<E>(obj[i], s, type);
+		}
+	}
+	else
+		s.put(UBJSONTuple::TYPE_ARRAY_END);
   }
 
   template<class T, int I>
